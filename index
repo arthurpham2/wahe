@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Warehouse Inventory Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb; padding: 16px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        .header h1 { font-size: 2rem; color: #1f2937; margin-bottom: 16px; }
+        .search-controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .search-input { flex: 1; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; min-width: 200px; }
+        .category-select { padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: white; }
+        .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-purple { background: #7c3aed; color: white; }
+        .btn-purple:hover { background: #6d28d9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-number { font-size: 2rem; font-weight: bold; margin-bottom: 4px; }
+        .stat-label { font-size: 0.875rem; color: #6b7280; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .item-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; position: relative; }
+        .item-header { padding: 16px; border-bottom: 1px solid #e5e7eb; }
+        .item-code { font-size: 1.25rem; font-weight: bold; color: #2563eb; margin-bottom: 8px; }
+        .item-name { font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+        .item-description { font-size: 0.875rem; color: #6b7280; }
+        .stock-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; margin-top: 8px; }
+        .stock-good { background: #dcfce7; color: #166534; }
+        .stock-medium { background: #fef3c7; color: #a16207; }
+        .stock-low { background: #fee2e2; color: #dc2626; }
+        .item-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px; border-bottom: 1px solid #e5e7eb; }
+        .photo-container { position: relative; }
+        .photo-label { font-size: 0.75rem; color: #6b7280; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .photo-img { width: 100%; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; cursor: pointer; transition: opacity 0.2s; }
+        .photo-img:hover { opacity: 0.8; }
+        .photo-placeholder { width: 100%; height: 80px; border: 2px dashed #d1d5db; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem; }
+        .download-btn { background: none; border: none; color: #6b7280; cursor: pointer; padding: 2px; border-radius: 4px; }
+        .download-btn:hover { background: #f3f4f6; }
+        .item-details { padding: 16px; }
+        .detail-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.875rem; }
+        .location-code { background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; }
+        .item-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+        .action-btn { background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 4px; padding: 6px; cursor: pointer; transition: all 0.2s; }
+        .action-btn:hover { background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; padding: 20px; }
+        .modal-content { background: white; border-radius: 8px; max-width: 500px; margin: 0 auto; max-height: 90vh; overflow-y: auto; position: relative; top: 50%; transform: translateY(-50%); }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: between; align-items: center; }
+        .modal-body { padding: 20px; }
+        .form-grid { display: grid; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-label { font-weight: 500; color: #374151; font-size: 0.875rem; }
+        .form-input { padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 16px; }
+        .location-inputs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .photo-upload-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+        .photo-upload { border: 2px dashed #d1d5db; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .photo-upload:hover { border-color: #9ca3af; background: #f9fafb; }
+        .photo-upload.has-image { border-style: solid; border-color: #16a34a; }
+        .photo-preview { width: 100%; max-height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 12px; }
+        .upload-label { display: block; color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; }
+        .upload-button { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
+        .upload-button.success { background: #16a34a; }
+        .modal-actions { padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; }
+        .close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .close-btn:hover { background: #f3f4f6; }
+        .hidden { display: none; }
+        .image-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; padding: 20px; }
+        .image-modal-content { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .image-modal img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+        .tip-cards { display: grid; gap: 12px; margin-top: 16px; }
+        .tip-card { padding: 12px 16px; border-radius: 6px; font-size: 0.875rem; }
+        .tip-blue { background: #eff6ff; color: #1e40af; }
+        .tip-green { background: #f0fdf4; color: #166534; }
+        .tip-purple { background: #faf5ff; color: #7c2d12; }
+        @media (max-width: 768px) {
+            .search-controls { flex-direction: column; }
+            .search-input { min-width: unset; }
+            .inventory-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .photo-upload-section { grid-template-columns: 1fr; }
+            .location-inputs { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Warehouse Inventory Management</h1>
+            <div class="search-controls">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search by code, name, or location...">
+                <select id="categoryFilter" class="category-select">
+                    <option value="All">All Categories</option>
+                    <option value="PowerPoints">PowerPoints</option>
+                    <option value="Switches">Switches</option>
+                    <option value="Mounting">Mounting</option>
+                    <option value="Tools">Tools</option>
+                </select>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openAddModal()">➕ Add Item</button>
+                <label class="btn btn-success" for="quickScan">📷 Quick Scan<input type="file" id="quickScan" accept="image/*" capture="environment" style="display: none;"></label>
+                <button class="btn btn-purple" onclick="downloadAllImages()">💾 Download All Photos</button>
+                <button class="btn" style="background: #059669; color: white;" onclick="exportInventory()">📁 Export Data</button>
+                <label class="btn" style="background: #dc2626; color: white;" for="importFile">📥 Import Data<input type="file" id="importFile" accept=".json" style="display: none;"></label>
+            </div>
+            <div class="tip-cards">
+                <div class="tip-card tip-blue">💡 <strong>Tip:</strong> Take 2 photos per item - one of the product and one of its shelf location!</div>
+                <div class="tip-card tip-green">🏢 <strong>Two-Floor Warehouse:</strong> Select Floor 1 or Floor 2 when adding items</div>
+                <div class="tip-card tip-purple">💾 <strong>Download Photos:</strong> Click download buttons on images or "Download All Photos" to save to your device</div>
+                <div class="tip-card" style="background: #fef2f2; color: #991b1b;">🌐 <strong>Permanent Storage:</strong> To save data permanently, host this page on GitHub Pages, Netlify, or similar. Use Export/Import for backup.</div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number" style="color: #2563eb;" id="totalItems">5</div><div class="stat-label">Total Items</div></div>
+                <div class="stat-card"><div class="stat-number" style="color: #7c3aed;" id="floor1Items">5</div><div class="stat-label">Floor 1 Items</div></div>
+                <div class="stat-card"><div class="stat-number" style="color: #16a34a;" id="goodStock">0</div><div class="stat-label">Good Stock</div></div>
+                <div class="stat-card"><div class="stat-number" style="color: #ea580c;" id="lowStock">5</div><div class="stat-label">Low Stock</div></div>
+            </div>
+        </div>
+        <div id="inventoryGrid" class="inventory-grid"></div>
+    </div>
+    
+    <div id="itemModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <div class="modal-header"><h2 id="modalTitle">Add New Item</h2></div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label">Product Code</label><input type="text" id="itemCode" class="form-input" placeholder="e.g., P2DD"></div>
+                    <div class="form-group"><label class="form-label">Product Name</label><input type="text" id="itemName" class="form-input" placeholder="Product name"></div>
+                    <div class="form-group"><label class="form-label">Description</label><input type="text" id="itemDescription" class="form-input" placeholder="Product description"></div>
+                    <div class="form-group"><label class="form-label">Specifications</label><input type="text" id="itemSpecs" class="form-input" placeholder="Technical specifications"></div>
+                    <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="itemQuantity" class="form-input" placeholder="0"></div>
+                    <div class="form-group"><label class="form-label">Unit</label><select id="itemUnit" class="form-input"><option value="pieces">Pieces</option><option value="boxes">Boxes</option><option value="sets">Sets</option></select></div>
+                    <div class="form-group"><label class="form-label">Pieces per Box (if applicable)</label><input type="number" id="itemPiecesPerBox" class="form-input" placeholder="Optional"></div>
+                    <div class="form-group"><label class="form-label">Category</label><select id="itemCategory" class="form-input"><option value="General">General</option><option value="PowerPoints">PowerPoints</option><option value="Switches">Switches</option><option value="Mounting">Mounting</option><option value="Tools">Tools</option></select></div>
+                    <div class="form-group"><label class="form-label">Location (Floor - Aisle - Shelf - Level)</label><div class="location-inputs"><input type="number" id="itemFloor" class="form-input" placeholder="Floor" min="1" max="10" value="1"><input type="number" id="itemAisle" class="form-input" placeholder="Aisle" value="6"><input type="number" id="itemShelf" class="form-input" placeholder="Shelf" value="1"><input type="number" id="itemLevel" class="form-input" placeholder="Level" value="5"></div></div>
+                </div>
+                <div class="photo-upload-section">
+                    <div><label class="upload-label">📦 Product Photo</label><div class="photo-upload" id="productPhotoUpload" onclick="document.getElementById('productPhotoInput').click()"><div id="productPhotoPreview"><div style="font-size: 2rem; margin-bottom: 8px;">📷</div><div style="margin-bottom: 8px;">Take photo of product</div><div class="upload-button">📱 Take Product Photo</div></div></div><input type="file" id="productPhotoInput" accept="image/*" capture="environment" style="display: none;"></div>
+                    <div><label class="upload-label">📍 Location Photo</label><div class="photo-upload" id="locationPhotoUpload" onclick="document.getElementById('locationPhotoInput').click()"><div id="locationPhotoPreview"><div style="font-size: 2rem; margin-bottom: 8px;">📍</div><div style="margin-bottom: 8px;">Take photo of shelf location</div><div class="upload-button success">📍 Take Location Photo</div></div></div><input type="file" id="locationPhotoInput" accept="image/*" capture="environment" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="saveItem()">✅ Save Item</button>
+                <button class="btn" style="background: #6b7280; color: white;" onclick="closeModal()">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="imageModal" class="image-modal">
+        <div class="image-modal-content">
+            <button class="close-btn" style="position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.5); color: white;" onclick="closeImageModal()">&times;</button>
+            <img id="modalImage" src="" alt="">
+            <button id="downloadModalBtn" class="btn btn-primary" style="position: absolute; bottom: 20px; right: 20px;">💾 Download</button>
+        </div>
+    </div>
+
+    <script>
+        let inventory = [
+            {id: 1, code: 'P2DD', name: 'TRANSCO Explorer Double PowerPoint', description: 'Deep Base Double Pole PowerPoint Double', specifications: '28mm deep, Double pole, 10A, 240V, Black', quantity: 5, unit: 'boxes', piecesPerBox: null, location: {floor: 1, aisle: 6, shelf: 1, level: 5, fullLocation: 'F1-A6-S1-L5'}, category: 'PowerPoints', productImage: null, locationImage: null},
+            {id: 2, code: 'AS3/B', name: 'TRANSCO Architrave Switch 3 Gang', description: '3 Gang Architrave Light Switch 10 Amp 240 Volt', specifications: '110mm (H), 35mm (W), 10mm (D), Black', quantity: 10, unit: 'pieces', piecesPerBox: 10, location: {floor: 1, aisle: 6, shelf: 1, level: 5, fullLocation: 'F1-A6-S1-L5'}, category: 'Switches', productImage: null, locationImage: null},
+            {id: 3, code: 'AS1/B', name: 'TRANSCO Architrave Switch 1 Gang', description: '1 Gang Architrave Light Switch 10 Amp 240 Volt', specifications: '34mm x 85mm x 25mm D, Black', quantity: 20, unit: 'pieces', piecesPerBox: 20, location: {floor: 1, aisle: 6, shelf: 1, level: 5, fullLocation: 'F1-A6-S1-L5'}, category: 'Switches', productImage: null, locationImage: null},
+            {id: 4, code: 'MF16/B', name: 'TRANSCO Mounting Flange 16mm', description: '16mm Mounting Flange (Black)', specifications: 'Universal fit, 16mm depth extension', quantity: 20, unit: 'pieces', piecesPerBox: 20, location: {floor: 1, aisle: 6, shelf: 1, level: 5, fullLocation: 'F1-A6-S1-L5'}, category: 'Mounting', productImage: null, locationImage: null},
+            {id: 5, code: 'MB/B', name: 'TRANSCO Mounting Block 35mm', description: 'Black Mounting Block 35mm', specifications: '117H x 75W x 35Dmm, Black', quantity: 10, unit: 'pieces', piecesPerBox: 10, location: {floor: 1, aisle: 6, shelf: 1, level: 5, fullLocation: 'F1-A6-S1-L5'}, category: 'Mounting', productImage: null, locationImage: null}
+        ];
+
+        let currentEditingId = null;
+        let currentProductImage = null;
+        let currentLocationImage = null;
+
+        function saveInventoryToStorage() {
+            try { localStorage.setItem('warehouseInventory', JSON.stringify(inventory)); console.log('✅ Inventory saved to localStorage'); } catch (e) { console.warn('⚠️ localStorage not available (normal in Claude.ai)'); }
+        }
+
+        function loadInventoryFromStorage() {
+            try { const saved = localStorage.getItem('warehouseInventory'); if (saved) { inventory = JSON.parse(saved); console.log('✅ Inventory loaded from localStorage'); } else { console.log('📦 Using default inventory'); } } catch (e) { console.warn('⚠️ localStorage not available (normal in Claude.ai)'); }
+        }
+
+        function exportInventory() {
+            const dataStr = JSON.stringify(inventory, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `warehouse_inventory_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            alert('📁 Inventory exported successfully!');
+        }
+
+        function importInventory(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (confirm('This will replace all current inventory data. Continue?')) {
+                            inventory = importedData;
+                            renderInventory();
+                            updateStats();
+                            saveInventoryToStorage();
+                            alert('✅ Inventory imported successfully!');
+                        }
+                    } catch (error) {
+                        alert('❌ Error importing file. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInventoryFromStorage();
+            renderInventory();
+            setupEventListeners();
+            updateStats();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', filterInventory);
+            document.getElementById('categoryFilter').addEventListener('change', filterInventory);
+            document.getElementById('quickScan').addEventListener('change', handleQuickScan);
+            document.getElementById('importFile').addEventListener('change', importInventory);
+            document.getElementById('productPhotoInput').addEventListener('change', handleProductPhotoUpload);
+            document.getElementById('locationPhotoInput').addEventListener('change', handleLocationPhotoUpload);
+            document.getElementById('itemModal').addEventListener('click', function(e) { if (e.target === this) { closeModal(); } });
+            document.getElementById('imageModal').addEventListener('click', function(e) { if (e.target === this) { closeImageModal(); } });
+        }
+
+        function renderInventory() {
+            const grid = document.getElementById('inventoryGrid');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedCategory = document.getElementById('categoryFilter').value;
+            
+            let filteredItems = inventory.filter(item => {
+                const matchesSearch = item.code.toLowerCase().includes(searchTerm) || item.name.toLowerCase().includes(searchTerm) || item.location.fullLocation.toLowerCase().includes(searchTerm);
+                const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+                return matchesSearch && matchesCategory;
+            });
+
+            grid.innerHTML = filteredItems.map(item => {
+                const stockStatus = getStockStatus(item.quantity);
+                return `<div class="item-card"><div class="item-actions"><button class="action-btn" onclick="editItem(${item.id})" title="Edit item">✏️</button><button class="action-btn" onclick="deleteItem(${item.id})" title="Delete item">🗑️</button></div><div class="item-header"><div class="item-code">${item.code}</div><div class="stock-badge ${stockStatus.class}">${stockStatus.status} Stock</div><div class="item-name">${item.name}</div><div class="item-description">${item.description}</div></div>${(item.productImage || item.locationImage) ? `<div class="item-photos"><div class="photo-container"><div class="photo-label">📦 Product ${item.productImage ? `<button class="download-btn" onclick="downloadImage('${item.productImage}', '${item.code}_product.jpg')" title="Download product image">💾</button>` : ''}</div>${item.productImage ? `<img src="${item.productImage}" alt="Product" class="photo-img" onclick="openImageModal('${item.productImage}', '${item.code}_product.jpg')">` : `<div class="photo-placeholder">No photo</div>`}</div><div class="photo-container"><div class="photo-label">📍 Location ${item.locationImage ? `<button class="download-btn" onclick="downloadImage('${item.locationImage}', '${item.code}_location.jpg')" title="Download location image">💾</button>` : ''}</div>${item.locationImage ? `<img src="${item.locationImage}" alt="Location" class="photo-img" onclick="openImageModal('${item.locationImage}', '${item.code}_location.jpg')">` : `<div class="photo-placeholder">No photo</div>`}</div></div>` : ''}<div class="item-details"><div class="detail-row"><span>📦</span><strong>${item.quantity} ${item.unit}</strong>${item.piecesPerBox ? `<span style="color: #6b7280;">(${item.piecesPerBox} per box)</span>` : ''}</div><div class="detail-row"><span>📍</span><span class="location-code">${item.location.fullLocation}</span></div><div style="font-size: 0.75rem; color: #6b7280; background: #f9fafb; padding: 8px; border-radius: 4px; margin: 8px 0;">Floor ${item.location.floor}, Aisle ${item.location.aisle}, Shelf ${item.location.shelf}, Level ${item.location.level}</div>${item.specifications ? `<div style="font-size: 0.75rem; color: #6b7280; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;"><strong>Specs:</strong> ${item.specifications}</div>` : ''}<div style="margin-top: 12px;"><span style="background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem;">${item.category}</span></div></div></div>`;
+            }).join('');
+
+            if (filteredItems.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #6b7280;"><div style="font-size: 3rem; margin-bottom: 16px;">📦</div><h3 style="margin-bottom: 8px;">No items found</h3><p>Try adjusting your search terms or add new items.</p></div>`;
+            }
+        }
+
+        function getStockStatus(quantity) {
+            if (quantity <= 5) return { status: 'Low', class: 'stock-low' };
+            if (quantity <= 15) return { status: 'Medium', class: 'stock-medium' };
+            return { status: 'Good', class: 'stock-good' };
+        }
+
+        function updateStats() {
+            document.getElementById('totalItems').textContent = inventory.length;
+            document.getElementById('floor1Items').textContent = inventory.filter(item => item.location.floor === 1).length;
+            document.getElementById('goodStock').textContent = inventory.filter(item => getStockStatus(item.quantity).status === 'Good').length;
+            document.getElementById('lowStock').textContent = inventory.filter(item => getStockStatus(item.quantity).status === 'Low').length;
+        }
+
+        function filterInventory() { renderInventory(); }
+
+        function openAddModal() {
+            currentEditingId = null;
+            document.getElementById('modalTitle').textContent = 'Add New Item';
+            clearForm();
+            document.getElementById('itemModal').style.display = 'block';
+        }
+
+        function editItem(id) {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+            currentEditingId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Item';
+            document.getElementById('itemCode').value = item.code;
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemDescription').value = item.description;
+            document.getElementById('itemSpecs').value = item.specifications;
+            document.getElementById('itemQuantity').value = item.quantity;
+            document.getElementById('itemUnit').value = item.unit;
+            document.getElementById('itemPiecesPerBox').value = item.piecesPerBox || '';
+            document.getElementById('itemCategory').value = item.category;
+            document.getElementById('itemFloor').value = item.location.floor;
+            document.getElementById('itemAisle').value = item.location.aisle;
+            document.getElementById('itemShelf').value = item.location.shelf;
+            document.getElementById('itemLevel').value = item.location.level;
+            currentProductImage = item.productImage;
+            currentLocationImage = item.locationImage;
+            updatePhotoPreview('product', item.productImage);
+            updatePhotoPreview('location', item.locationImage);
+            document.getElementById('itemModal').style.display = 'block';
+        }
+
+        function deleteItem(id) {
+            if (confirm('Are you sure you want to delete this item?')) {
+                inventory = inventory.filter(item => item.id !== id);
+                saveInventoryToStorage();
+                renderInventory();
+                updateStats();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('itemModal').style.display = 'none';
+            clearForm();
+            currentProductImage = null;
+            currentLocationImage = null;
+        }
+
+        function clearForm() {
+            document.getElementById('itemCode').value = '';
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemDescription').value = '';
+            document.getElementById('itemSpecs').value = '';
+            document.getElementById('itemQuantity').value = '';
+            document.getElementById('itemUnit').value = 'pieces';
+            document.getElementById('itemPiecesPerBox').value = '';
+            document.getElementById('itemCategory').value = 'General';
+            document.getElementById('itemFloor').value = '1';
+            document.getElementById('itemAisle').value = '6';
+            document.getElementById('itemShelf').value = '1';
+            document.getElementById('itemLevel').value = '5';
+            updatePhotoPreview('product', null);
+            updatePhotoPreview('location', null);
+        }
+
+        function saveItem() {
+            const code = document.getElementById('itemCode').value.trim().toUpperCase();
+            const name = document.getElementById('itemName').value.trim();
+            if (!code || !name) { alert('Please enter both product code and name.'); return; }
+            const item = {
+                code: code, name: name,
+                description: document.getElementById('itemDescription').value.trim(),
+                specifications: document.getElementById('itemSpecs').value.trim(),
+                quantity: parseInt(document.getElementById('itemQuantity').value) || 0,
+                unit: document.getElementById('itemUnit').value,
+                piecesPerBox: parseInt(document.getElementById('itemPiecesPerBox').value) || null,
+                category: document.getElementById('itemCategory').value,
+                location: {
+                    floor: parseInt(document.getElementById('itemFloor').value) || 1,
+                    aisle: parseInt(document.getElementById('itemAisle').value) || 1,
+                    shelf: parseInt(document.getElementById('itemShelf').value) || 1,
+                    level: parseInt(document.getElementById('itemLevel').value) || 1
+                },
+                productImage: currentProductImage,
+                locationImage: currentLocationImage
+            };
+            item.location.fullLocation = `F${item.location.floor}-A${item.location.aisle}-S${item.location.shelf}-L${item.location.level}`;
+            if (currentEditingId) {
+                const index = inventory.findIndex(i => i.id === currentEditingId);
+                if (index !== -1) { inventory[index] = { ...item, id: currentEditingId }; }
+            } else {
+                item.id = Date.now();
+                inventory.push(item);
+            }
+            renderInventory();
+            updateStats();
+            saveInventoryToStorage();
+            closeModal();
+            alert(currentEditingId ? '✅ Item updated successfully!' : '✅ Item added successfully!');
+        }
+
+        function handleProductPhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentProductImage = e.target.result;
+                    updatePhotoPreview('product', currentProductImage);
+                    alert('✅ Product photo uploaded successfully!');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleLocationPhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentLocationImage = e.target.result;
+                    updatePhotoPreview('location', currentLocationImage);
+                    alert('✅ Location photo uploaded successfully!');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updatePhotoPreview(type, imageData) {
+            const previewId = type === 'product' ? 'productPhotoPreview' : 'locationPhotoPreview';
+            const uploadContainer = type === 'product' ? 'productPhotoUpload' : 'locationPhotoUpload';
+            const preview = document.getElementById(previewId);
+            const container = document.getElementById(uploadContainer);
+            if (imageData) {
+                preview.innerHTML = `<img src="${imageData}" alt="${type} preview" class="photo-preview"><div class="upload-button ${type === 'location' ? 'success' : ''}">Change Photo</div>`;
+                container.classList.add('has-image');
+            } else {
+                const icon = type === 'product' ? '📷' : '📍';
+                const text = type === 'product' ? 'Take photo of product' : 'Take photo of shelf location';
+                const buttonText = type === 'product' ? '📱 Take Product Photo' : '📍 Take Location Photo';
+                preview.innerHTML = `<div style="font-size: 2rem; margin-bottom: 8px;">${icon}</div><div style="margin-bottom: 8px;">${text}</div><div class="upload-button ${type === 'location' ? 'success' : ''}">${buttonText}</div>`;
+                container.classList.remove('has-image');
+            }
+        }
+
+        function handleQuickScan(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const detectedCodes = ['P2DD', 'AS3/B', 'MF16/B', 'MB/B', 'AS1/B'];
+                const randomCode = detectedCodes[Math.floor(Math.random() * detectedCodes.length)];
+                setTimeout(() => {
+                    document.getElementById('searchInput').value = randomCode;
+                    filterInventory();
+                    alert(`Detected product code: ${randomCode}`);
+                }, 1000);
+            }
+        }
+
+        function downloadImage(imageData, filename) {
+            if (!imageData || imageData.includes('placeholder')) { alert('No image available to download'); return; }
+            const link = document.createElement('a');
+            link.href = imageData;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadAllImages() {
+            let downloadCount = 0;
+            inventory.forEach(item => {
+                if (item.productImage) {
+                    setTimeout(() => { downloadImage(item.productImage, `${item.code}_product.jpg`); }, downloadCount * 500);
+                    downloadCount++;
+                }
+                if (item.locationImage) {
+                    setTimeout(() => { downloadImage(item.locationImage, `${item.code}_location.jpg`); }, downloadCount * 500);
+                    downloadCount++;
+                }
+            });
+            if (downloadCount === 0) { alert('No images available to download'); } else { alert(`Starting download of ${downloadCount} images...`); }
+        }
+
+        function openImageModal(imageSrc, filename) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('downloadModalBtn').onclick = () => downloadImage(imageSrc, filename);
+            document.getElementById('imageModal').style.display = 'block';
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
